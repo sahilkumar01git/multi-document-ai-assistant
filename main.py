@@ -9,9 +9,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_core.prompts import ChatPromptTemplate
 import streamlit as st
-
 
 load_dotenv()
 
@@ -26,15 +24,20 @@ uploaded_file = st.sidebar.file_uploader(
 
 query = st.text_input("Ask a question:")
 
-st.session_state.memory = ConversationBufferMemory(
-    memory_key="chat_history",
-    return_messages=True,
-    output_key="answer"
-)
+if "memory" not in st.session_state:
+    st.session_state.memory = ConversationBufferMemory(
+        memory_key="chat_history",
+        return_messages=True,
+        output_key="answer"
+    )
+
+if "questions" not in st.session_state:
+    st.session_state.questions = []
 
 @st.cache_resource
 def process_documents(files):
     all_docs = []
+
     for file in files:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
             tmp_file.write(file.read())
@@ -42,6 +45,9 @@ def process_documents(files):
 
         loader = PyPDFLoader(tmp_path)
         docs = loader.load()
+
+        for d in docs:
+            d.metadata["source"] = file.name
 
         all_docs.extend(docs)
 
@@ -77,28 +83,35 @@ if uploaded_file:
         groq_api_key=st.secrets["GROQ_API_KEY"]
     )
 
-    prompt = ChatPromptTemplate.from_template("""
-Answer the question only from the given context.
-If the answer is not present in the context, say:
-"I could not find that in the uploaded documents."
-
-Context:
-{context}
-
-Question:
-{input}
-Answer:
-""")
-
     document_chain = ConversationalRetrievalChain.from_llm(
         llm=groq_LLM,
         retriever=retriever,
         memory=st.session_state.memory,
-        return_source_documents=True,
-        output_key="answer"
+        return_source_documents=True
     )
 
     if query:
+        st.session_state.questions.append(query)
+
         response = document_chain.invoke({"question": query})
+
         st.subheader("Answer")
         st.write(response["answer"])
+
+        st.subheader("Sources")
+        for doc in response["source_documents"]:
+            st.write(
+                f"{doc.metadata.get('source')} | Page {doc.metadata.get('page', 'N/A')}"
+            )
+            st.write(doc.page_content[:200] + "...")
+            st.markdown("---")
+
+
+st.subheader("Chat History")
+for msg in st.session_state.memory.chat_memory.messages:
+    st.write(msg.content)
+
+
+st.subheader("User Questions")
+for q in st.session_state.questions:
+    st.write(q)
