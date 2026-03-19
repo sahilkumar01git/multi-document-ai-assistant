@@ -74,7 +74,7 @@ if uploaded_file:
         model="llama-3.3-70b-versatile",
         temperature=0.4,
         max_tokens=500,
-        groq_api_key=os.getenv("GROQ_API_KEY")
+        groq_api_key=st.secrets["GROQ_API_KEY"]
     )
 
     prompt = ChatPromptTemplate.from_template("""
