@@ -57,6 +57,24 @@ pytest -q
 7. Groq receives the question and retrieved context, then streams a grounded answer.
 8. Retrieved source pages are shown below document-based answers.
 
+## Project Structure
+
+```text
+main.py                 Streamlit entry point
+app/
+	config.py             Environment variables and application constants
+	services/
+		chat_service.py     General Groq chat and message conversion
+		rag_service.py      PDF loading, embeddings, Chroma, and retrieval chains
+	ui/
+		app.py              Streamlit page orchestration
+		sidebar.py          Upload and conversation controls
+		styles.py           Shared visual styling and empty state
+tests/                  Automated tests
+```
+
+The service modules are intentionally in-process for this Streamlit deployment. They provide clean boundaries so chat, retrieval, and UI can later be extracted into independently deployed services if the project grows.
+
 ## Deployment
 
 For Streamlit Community Cloud, add `GROQ_API_KEY` under the app's secrets settings instead of committing a `.env` file.
