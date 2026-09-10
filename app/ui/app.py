@@ -6,6 +6,7 @@ from app.services.chat_service import (
     to_langchain_messages,
 )
 from app.services.rag_service import (
+    build_grounded_refusal_message,
     build_rag_chain,
     build_vectorstore,
     stream_rag_chain,
@@ -87,11 +88,16 @@ def run():
             with st.spinner("Thinking..."):
                 if rag_chain:
                     def answer_stream():
+                        streamed_answer = ""
                         for chunk in stream_rag_chain(rag_chain, query, chat_history):
                             if chunk.get("context"):
                                 source_documents.extend(chunk["context"])
                             if chunk.get("answer"):
+                                streamed_answer = chunk["answer"]
                                 yield chunk["answer"]
+
+                        if not source_documents and not streamed_answer:
+                            yield build_grounded_refusal_message()
 
                     answer = st.write_stream(answer_stream())
                 else:

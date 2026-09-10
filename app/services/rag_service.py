@@ -15,6 +15,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.config import EMBEDDING_MODEL, GROQ_MODEL
 
 
+def build_grounded_refusal_message():
+    return (
+        "I can only answer questions using the uploaded PDFs. "
+        "I couldn’t find relevant information in the uploaded documents for that question."
+    )
+
+
 @st.cache_resource(show_spinner="Loading the embedding model...")
 def get_embeddings():
     return HuggingFaceEmbeddings(
@@ -98,6 +105,7 @@ def build_rag_chain(vectorstore, api_key):
                 "You are a careful document research assistant. Answer using only the supplied document context. "
                 "First identify the relevant evidence, then explain the answer clearly and completely. "
                 "If the context does not support an answer, say so instead of guessing. Never invent facts or citations. "
+                "If no relevant information is present in the document context, answer exactly with: 'I can only answer questions using the uploaded PDFs. I couldn’t find relevant information in the uploaded documents for that question.' "
                 "Give a detailed, well-structured answer with key points and examples when the context supports them. "
                 "Cite source names and page numbers inline when possible.\n\nDocument context:\n{context}",
             ),
@@ -112,5 +120,24 @@ def build_rag_chain(vectorstore, api_key):
 
 
 def stream_rag_chain(rag_chain, query, chat_history):
+    context_documents = []
+    answer_parts = []
+
     for chunk in rag_chain.stream({"input": query, "chat_history": chat_history}):
-        yield chunk
+        if chunk.get("context"):
+            context_documents.extend(chunk["context"])
+        if chunk.get("answer"):
+            answer_parts.append(chunk["answer"])
+
+    if not context_documents:
+        yield {"answer": build_grounded_refusal_message()}
+        return
+
+    if context_documents:
+        yield {"context": context_documents}
+
+    final_answer = "".join(answer_parts).strip()
+    if final_answer:
+        yield {"answer": final_answer}
+    else:
+        yield {"answer": build_grounded_refusal_message()}
