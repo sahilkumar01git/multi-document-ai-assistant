@@ -9,3 +9,4 @@ langchain-classic
 chromadb
 sentence-transformers
 pypdf
+pytest

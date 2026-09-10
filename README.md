@@ -1,113 +1,62 @@
-# Multi-Document AI Research Assistant (RAG)
+# Multi-Document AI Assistant
 
-This project is a Generative AI application that allows users to upload multiple PDF documents and ask questions based on their content using Retrieval-Augmented Generation (RAG).
-
----
-
-## Overview
-
-The system combines large language models with vector search and document retrieval to generate accurate, context-aware answers grounded in uploaded documents.
-
----
+A Streamlit chatbot that answers normal questions with Groq and switches to grounded RAG when PDF files are uploaded.
 
 ## Features
 
-* Upload and process multiple PDF documents
-* Ask questions in natural language
-* Context-aware responses using conversation memory
-* Answers generated strictly from document content
-* Fast retrieval using vector database
-* Reduced hallucination through controlled prompting
+- Upload multiple PDFs in one session
+- ChatGPT-style conversation with right-aligned user messages and left-aligned assistant replies
+- General chat mode without requiring a PDF
+- Streaming responses with a visible thinking state
+- Groq `openai/gpt-oss-120b` for answer generation
+- Local Hugging Face embeddings and Chroma retrieval
+- Answers grounded in retrieved document context when PDFs are present
+- Source document and page citations
+- Cached embeddings and document processing
+- Isolated vector collections for each document set
+- MMR retrieval for more diverse and relevant chunks
+- Friendly handling for missing keys, unreadable PDFs, and API errors
 
----
+## Setup
 
-## Tech Stack
-
-* Frontend: Streamlit
-* Backend: Python
-* LLM: Groq (LLaMA 3)
-* Framework: LangChain
-* Embeddings: HuggingFace
-* Vector Database: ChromaDB
-
----
-
-## How It Works
-
-1. Upload PDF documents
-2. Extract and split text into chunks
-3. Convert chunks into embeddings
-4. Store embeddings in a vector database
-5. Convert user query into embedding
-6. Retrieve relevant document chunks
-7. Generate answer using LLM and retrieved context
-
----
-
-## Live Demo
-
-https://multi-document-ai-assistant-kqee4nxdtasrm2vurxtkla.streamlit.app/
-
----
-
-## Installation & Setup
-
-```bash
-git clone https://github.com/sahilkumar01git/multi-document-ai-assistant.git
-cd multi-document-ai-assistant
+```powershell
 python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
----
-
-## API Key Setup
-
-Create a `.env` file:
+Add your Groq key to `.env`:
 
 ```env
-GROQ_API_KEY=your_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
----
+The app also accepts `groq_api_key` for compatibility with an existing local `.env` file. Never commit `.env` or expose the key in source code.
 
-## Run Locally
+## Run
 
-```bash
+```powershell
 python -m streamlit run main.py
 ```
 
----
+Then open the local URL shown by Streamlit.
 
-## Project Structure
+## Tests
 
-```
-main.py
-requirements.txt
-README.md
-screenshot.png
-sample.pdf
+```powershell
+pytest -q
 ```
 
----
+## Architecture
 
-## Use Cases
+1. Streamlit accepts normal chat questions and optional PDF uploads.
+2. Without PDFs, Groq answers as a general-purpose conversational assistant.
+3. With PDFs, files are written to temporary paths only while `PyPDFLoader` reads them.
+4. Text is split into overlapping chunks and embedded locally with normalized vectors.
+5. Chroma stores the chunks in a collection derived from the uploaded content.
+6. A history-aware MMR retriever resolves follow-up questions and selects diverse evidence.
+7. Groq receives the question and retrieved context, then streams a grounded answer.
+8. Retrieved source pages are shown below document-based answers.
 
-* Research assistance
-* Document-based question answering
-* Internal knowledge systems
-* Customer support automation
+## Deployment
 
----
-
-## Future Improvements
-
-* Source highlighting (file and page reference)
-* Multi-document comparison
-* Improved user interface
-* Authentication and user sessions
-
----
-
-## Note
-
-This project demonstrates a practical implementation of Retrieval-Augmented Generation (RAG) using modern large language models and vector search.
+For Streamlit Community Cloud, add `GROQ_API_KEY` under the app's secrets settings instead of committing a `.env` file.
